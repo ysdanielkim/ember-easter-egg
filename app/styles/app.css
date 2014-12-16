@@ -6,7 +6,7 @@ html, body {
     text-align: center;
 }
 
-.easter-egg {
+.emberEasterEgg {
     margin:0px auto;
     background-color: #bbb;
     display: block;
@@ -15,25 +15,7 @@ html, body {
     overflow: hidden;  
 }
 
-.snakeBlock {
-    background-color:#ff0000;
-    border-radius: 10px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-    width: 20px;
-    height: 20px;
-    display: block;
-    line-height: 20px;
-    float: left;
-    text-align: center;
-    color: #555;
-    font-family: arial;
-    vertical-align: middle;
-    font-size: 9px;
-}
-
-.floorBlock {
-    background-color:#ccc;
+.emberEasterEgg .gameBlock {
     border-radius: 3px;
     border: 1px solid #ddd;
     box-sizing: border-box;
@@ -43,8 +25,19 @@ html, body {
     line-height: 20px;
     float: left;
     text-align: center;
-    color: #555;
     font-family: arial;
     vertical-align: middle;
-    font-size: 9px;
+    font-size: 9px;    
+}
+
+.emberEasterEgg .snakeBlock {
+    background-color: #ff0000;
+}
+
+.emberEasterEgg .floorBlock {
+
+}
+
+.emberEasterEgg .peanutBlock {
+    background-color: #6f992a;
 }
