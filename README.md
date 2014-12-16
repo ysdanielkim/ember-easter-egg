@@ -1,4 +1,6 @@
-# Ember-easteregg
+# Ember Easter Egg
+
+<img src="https://raw.githubusercontent.com/jschaftenaar/ember-easter-egg/master/EmberEasterEgg.png"/>
 
 This README outlines the details of collaborating on this Ember application.
 A short introduction of this app could easily go here.
