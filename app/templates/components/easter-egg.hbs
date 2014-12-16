@@ -1,0 +1,11 @@
+<div class="easter-egg" {{bind-attr style="easterEggStyle"}}>
+    {{#each block in level.blocks}}
+        {{#if block.isFloor }}
+           <div class="floorBlock">1</div>
+        {{/if}}
+        {{# if block.isSnake }}
+        	<div class="snakeBlock">2</div>
+        {{/if}}
+    {{/each}}
+</div>
+{{yield}}
