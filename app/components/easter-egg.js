@@ -1,19 +1,20 @@
 import Ember from 'ember';
 
-export default Ember.Component.extend({
+export default Ember.Component.extend( {
 
-    blocksH: 40,
-    blocksV: 29,
-    blockSize: 20,
-    peanut: null,
-    snake: [],
-    direction: 'left',
-    oldDirection: 'left',
-    mainLoop: null, // attach the interval to this, we will have a way to stop it
-    loopDelay: 1000/10,
+    // some initial settings
+    blocksH      : 52,
+    blocksV      : 17,
+    blockSize    : 20,
+    peanut       : null,
+    snake        : [],
+    direction    : 'left',
+    oldDirection : 'left',
+    mainLoop     : null, // attach the interval to this, we will have a way to stop it
+    loopDelay    : 1000/10,
 
     easterEggStyle: function() {
-        return 'width: '+this.blocksH*this.blockSize+'px; height:'+this.blocksV*this.blockSize+'px;';
+        return 'width: ' + this.blocksH * this.blockSize + 'px; height:' + this.blocksV * this.blockSize + 'px;';
     }.property(),
 
     mapSize: function() {
@@ -22,26 +23,25 @@ export default Ember.Component.extend({
 
     // make sure that the snake cannot go against itself
     directionCheck: function() {
-        var gs = this,
-            check = [
-                ['up','down'],
-                ['left','right']
+        var gs        = this,
+            direction = [
+                [ 'up', 'down' ],
+                [ 'left', 'right' ]
             ];
-        check.forEach (function(item) {
-            if ((gs.oldDirection === item[0] && gs.direction === item[1]) ||
-                (gs.oldDirection === item[1] && gs.direction === item[0])) {
-                    gs.direction = gs.oldDirection;
-                }
+        direction.forEach(function(item) {
+            if ( ( gs.oldDirection === item[ 0 ] && gs.direction === item[ 1 ] ) ||
+                 ( gs.oldDirection === item[ 1 ] && gs.direction === item[ 0 ] ) ) {
+                gs.direction = gs.oldDirection;
+            }
         });
     },
 
     computeSnake: function() {
         var newPosition,
-            snake = this.snake;
-        snake.reverse();
-        newPosition = snake[snake.length-1];
+            snake = this.get( 'snake' );
+        newPosition = snake[ 0 ];
         this.directionCheck();
-        switch (this.direction) {
+        switch ( this.direction ) {
             case 'up':
                 newPosition -= this.blocksH;
                 break;
@@ -53,108 +53,140 @@ export default Ember.Component.extend({
             break;
             case 'left':
                 newPosition--;
-                break;
+            break;
         }
         this.oldDirection = this.direction;
-        snake.push(newPosition);
-        snake.reverse();
-        if (snake[0]!==this.peanut) {
-            snake.pop();
+        if ( newPosition !== this.get( 'peanut' ) ) {
+            snake.popObject();
         } else {
-            this.computePeanut();
+            this.computePeanut( snake );
         }
-        this.snake = snake;
+        if ( this.collisionOccured( snake, newPosition ) ) {
+            window.clearInterval( this.mainLoop );
+        } else {
+            snake.insertAt( 0, newPosition );
+        }
     },
 
-    computeLevel: function() {
-        var gs = this,
-            blocks = this.get('blocks');
-        blocks.forEach(function(item, index) {
-            if (gs.peanut === index) {
-                Ember.set(item, 'isFloor', false);
-                Ember.set(item, 'isSnake', false);
-                Ember.set(item, 'isPeanut', true);
-            } else if (gs.snake.indexOf(index) >= 0) {
-                Ember.set(item, 'isFloor', false);
-                Ember.set(item, 'isSnake', true);
-                Ember.set(item, 'isPeanut', false);
-            } else {
-                Ember.set(item, 'isFloor', true);
-                Ember.set(item, 'isSnake', false);
-                Ember.set(item, 'isPeanut', false);
-            }
-        });
+    isSnake: function( i ) {
+        if ( this.get('snake').contains( i ) ) {
+            return true;
+        }
     },
 
-    computePeanut: function() {
+    isPeanut: function( i ) {
+        if ( this.get( 'peanut' ) === i ) {
+            return true;
+        }
+    },
+
+    isFloor: function(i) {
+        return !( this.isPeanut( i ) || this.isSnake( i ) );
+    },
+
+    level: function() {
+        var gs     = this, 
+            blocks = this.get( 'blocks' );
+        blocks.map( function( item, i ) {
+            item.setProperties( {
+                isPeanut : gs.isPeanut( i ),
+                isSnake  : gs.isSnake( i ),
+                isFloor  : gs.isFloor( i )
+            } );
+        } );
+        return blocks;
+    }.property( 'snake.@each' ),
+
+    computePeanut: function( snake ) {
         var i = false;
-        while (i===false) {
-            i = Math.floor((Math.random() * this.mapSize()) + 0);
-            if (this.snake.indexOf(i) >= 0) {
+        while ( i===false ) {
+            i = Math.floor( ( Math.random() * this.mapSize() ) + 0);
+            if ( snake.contains(i) ) {
                 i = false;
             }
         }
-        this.peanut = i;
+        this.set( 'peanut', i );
     },
 
-    collisionOccured: function() {
-        var i,
-            snake = this.snake,
-            blocks = this.get('blocks');  
+    collisionOccured: function( snake, newPosition ) {
+        var i;
+
         // check if collided with self
-        for (i = 1; i<snake.length; i++) {
-            if (snake[0] === snake[i]) {
+        for ( i = 0; i < snake.length; i++ ) {
+            if ( newPosition === snake[i] ) {
                 return true;
             }
         }
+
         // check if snake has collided, top or bottom
-        if (snake[0]<0 || snake[0] >= blocks.length) {
+        if ( newPosition < 0 || newPosition >= this.get('blocks').length ) {
             return true;
         }
+
         // collision check left side
-        if (((snake[0]+1) % (this.blocksH)) === 0 &&
-            (snake[1] % (this.blocksH)) === 0)  {
+        if ( ( (newPosition + 1 ) % ( this.blocksH ) ) === 0 &&
+             ( snake[0] % ( this.blocksH ) ) === 0 )  {
             return true;
         }
+
         // collision check right side
-        if (((snake[0]) % (this.blocksH)) === 0 &&
-            ((snake[1]+1) % (this.blocksH)) === 0) {
+        if ( ( ( newPosition ) % ( this.blocksH ) ) === 0 &&
+             ( ( snake[0]+1 ) % ( this.blocksH ) ) === 0 ) {
             return true;
-         }
+        }
     },
 
-    gameLoop: function(gs) {
+    gameLoop: function( gs ) {
         gs.computeSnake();
-        if (gs.collisionOccured()) {
-            console.log('collision happened, bad driver!');
-            window.clearInterval(gs.mainLoop);
-        } else {
-            gs.computeLevel();
-        }
     },
 
     initialize: function() {
         var i,
-            gs = this,
+            gs     = this,
             length = 6,
-            blocks = Ember.A();
-        // set snake in the center of the map
-        for (i=0; i<length; i++) {
-            this.snake.push(((this.mapSize()-length)/2)+i);
-        }
-        this.computePeanut();
-        // initialize the map
-        for (i=0; i<(this.mapSize()); i++) {
-            blocks.pushObject({ isFloor: false, isSnake: false, isPeanut: false, index: i });
-        }
-        this.set('blocks', blocks);
-        window.addEventListener('keydown', function (e) {
-            var keyTrans = {37: 'left', 38: 'up', 39: 'right', 40:'down'};
-            if (keyTrans.hasOwnProperty(e.keyCode)) {
-                gs.direction = keyTrans[e.keyCode];
-            }
-        });
-        this.mainLoop = setInterval(this.gameLoop, this.loopDelay, gs);
-    }.on( 'init' )
+            offset = 0,
+            snake  = [],
+            blocks = [];
 
-});
+        // set snake in the center of the map
+        if ( this.blocksV % 2 === 0 ) {
+            offset = ( this.blocksH ) / 2;
+        }
+        for ( i = 0; i < length; i++ ) {
+            snake.push( ( ( this.mapSize() - length ) / 2 ) + i + offset + 1 );
+        }
+
+        this.computePeanut( snake );
+        this.set( 'snake', snake );
+
+        // initialize the map
+        for ( i = 0; i < ( this.mapSize() ); i++ ) {
+            blocks.pushObject( Ember.Object.create(
+                {
+                    isFloor  : this.isFloor( i ),
+                    isSnake  : this.isSnake( i ),
+                    isPeanut : this.isPeanut( i )
+                }
+            ));
+        }
+        this.set( 'blocks', blocks );
+
+        window.addEventListener( 'keydown' , function( e ) {
+            var keyTrans = {
+                37 : 'left', 
+                38 : 'up',   
+                39 : 'right',
+                40 : 'down'   
+            };
+            if ( keyTrans.hasOwnProperty( e.keyCode ) ) {
+                gs.direction = keyTrans[ e.keyCode ];
+            }
+        } );
+    }.on( 'init' ),
+
+    startGame: function() {
+        var gs = this;
+        this.mainLoop = setInterval( this.gameLoop, this.loopDelay, gs );
+    }.on( 'didInsertElement' )
+
+} );
