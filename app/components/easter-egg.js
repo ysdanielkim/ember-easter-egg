@@ -28,7 +28,8 @@ export default Ember.Component.extend( {
             ],
             oldDirection = this.get( 'oldDirection' ),
             direction = this.get( 'direction' );
-        possibleDirection.forEach(function(item) {
+
+        possibleDirection.map(function(item) {
             if ( ( oldDirection === item[ 0 ] && direction === item[ 1 ] ) ||
                  ( oldDirection === item[ 1 ] && direction === item[ 0 ] ) ) {
                 gs.set('direction', oldDirection);
@@ -39,9 +40,10 @@ export default Ember.Component.extend( {
     computeSnake: function(gs) {
         var newPosition,
             snake = gs.get( 'snake' ),
-            direction = gs.get( 'direction' );
+            direction;
         newPosition = snake[ 0 ];
         gs.directionCheck();
+        direction = gs.get('direction');
         switch ( direction ) {
             case 'up':
                 newPosition -= gs.blocksH;
