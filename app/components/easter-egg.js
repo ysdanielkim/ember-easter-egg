@@ -3,8 +3,8 @@ import Ember from 'ember';
 export default Ember.Component.extend( {
 
     // some initial settings
-    blocksH      : 52,
-    blocksV      : 17,
+    blocksH      : 32,
+    blocksV      : 25,
     blockSize    : 20,
     peanut       : null,
     snake        : [],
@@ -36,17 +36,17 @@ export default Ember.Component.extend( {
         });
     },
 
-    computeSnake: function() {
+    computeSnake: function(gs) {
         var newPosition,
-            snake = this.get( 'snake' );
+            snake = gs.get( 'snake' );
         newPosition = snake[ 0 ];
-        this.directionCheck();
-        switch ( this.direction ) {
+        gs.directionCheck();
+        switch ( gs.direction ) {
             case 'up':
-                newPosition -= this.blocksH;
+                newPosition -= gs.blocksH;
                 break;
             case 'down':
-                newPosition += this.blocksH;
+                newPosition += gs.blocksH;
                 break;
             case 'right':
                 newPosition++;
@@ -55,14 +55,16 @@ export default Ember.Component.extend( {
                 newPosition--;
             break;
         }
-        this.oldDirection = this.direction;
-        if ( newPosition !== this.get( 'peanut' ) ) {
+        gs.oldDirection = gs.direction;
+        if ( newPosition !== gs.get( 'peanut' ) ) {
             snake.popObject();
         } else {
-            this.computePeanut( snake );
+            gs.incrementProperty('score');
+            gs.computePeanut( snake );
         }
-        if ( this.collisionOccured( snake, newPosition ) ) {
-            window.clearInterval( this.mainLoop );
+        if ( gs.collisionOccured( snake, newPosition ) ) {
+            window.clearInterval( gs.mainLoop );
+            gs.set('gameMode', 'over');
         } else {
             snake.insertAt( 0, newPosition );
         }
@@ -136,11 +138,23 @@ export default Ember.Component.extend( {
         }
     },
 
-    gameLoop: function( gs ) {
-        gs.computeSnake();
-    },
+    informationMessage: function() {
+        switch ( this.get( 'gameMode' ) ) {
+            case 'new':
+                return 'TO START: press spacebar. CONTROL: use arrow keys';
 
-    initialize: function() {
+            case 'paused':
+                return 'GAME PAUSED: press spacebar to continue';
+
+            case 'over':
+                return 'GAME OVER: press spacebar to restart. PEANUTS EATEN:' + this.get( 'score' );
+
+            case 'playing':
+                return 'PEANUTS EATEN: ' + this.get( 'score' );
+        }
+    }.property( 'gameMode', 'score' ),
+
+    initialize: function(restart) {
         var i,
             gs     = this,
             length = 6,
@@ -148,20 +162,19 @@ export default Ember.Component.extend( {
             snake  = [],
             blocks = [];
 
-        // set snake in the center of the map
+        // initialize the snake
         if ( this.blocksV % 2 === 0 ) {
             offset = ( this.blocksH ) / 2;
         }
         for ( i = 0; i < length; i++ ) {
             snake.push( ( ( this.mapSize() - length ) / 2 ) + i + offset + 1 );
         }
-
         this.computePeanut( snake );
         this.set( 'snake', snake );
 
         // initialize the map
         for ( i = 0; i < ( this.mapSize() ); i++ ) {
-            blocks.pushObject( Ember.Object.create(
+            blocks.push( Ember.Object.create(
                 {
                     isFloor  : this.isFloor( i ),
                     isSnake  : this.isSnake( i ),
@@ -170,23 +183,41 @@ export default Ember.Component.extend( {
             ));
         }
         this.set( 'blocks', blocks );
+        this.set( 'score', 0);
 
-        window.addEventListener( 'keydown' , function( e ) {
-            var keyTrans = {
-                37 : 'left', 
-                38 : 'up',   
-                39 : 'right',
-                40 : 'down'   
-            };
-            if ( keyTrans.hasOwnProperty( e.keyCode ) ) {
-                gs.direction = keyTrans[ e.keyCode ];
-            }
-        } );
-    }.on( 'init' ),
-
-    startGame: function() {
-        var gs = this;
-        this.mainLoop = setInterval( this.gameLoop, this.loopDelay, gs );
-    }.on( 'didInsertElement' )
+        if (restart) {
+            // gs.mainLoop = setInterval( gs.computeSnake, gs.loopDelay, gs );
+            this.set( 'gameMode', 'new');
+        } else {
+            this.set( 'gameMode', 'new');
+            window.addEventListener( 'keydown' , function( e ) {
+                var keyTrans = {
+                    37 : 'left', 
+                    38 : 'up',   
+                    39 : 'right',
+                    40 : 'down'   
+                };
+                if ( keyTrans.hasOwnProperty( e.keyCode ) ) {
+                    gs.direction = keyTrans[ e.keyCode ];
+                } else if (e.keyCode == 32) {
+                    switch ( gs.get( 'gameMode' ) ) {
+                        case ( 'paused' ):
+                        case ( 'new' ):
+                            gs.mainLoop = setInterval( gs.computeSnake, gs.loopDelay, gs );
+                            gs.set( 'gameMode', 'playing' );
+                        break;
+                        case ('playing'):
+                            window.clearInterval( gs.mainLoop );
+                            gs.set( 'gameMode', 'paused');
+                        break;
+    
+                        case ( 'over' ):
+                            gs.initialize( true );
+                        break;
+                    }
+                }
+            } );
+        }
+    }.on( 'init' )
 
 } );

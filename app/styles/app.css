@@ -41,3 +41,13 @@ html, body {
 .emberEasterEgg .peanutBlock {
     background-color: #6f992a;
 }
+
+.emberEasterEggScore {
+    position: relative;
+    top: -20px;
+    text-align: right;
+    color: #808080;
+    margin-right: 5px;
+    font-weight: bold;
+    font-family: Tahoma, Verdana, Segoe, sans-serif;;
+}
