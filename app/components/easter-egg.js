@@ -22,24 +22,27 @@ export default Ember.Component.extend( {
     // make sure that the snake cannot go against itself
     directionCheck: function() {
         var gs        = this,
-            direction = [
+            possibleDirection = [
                 [ 'up', 'down' ],
                 [ 'left', 'right' ]
-            ];
-        direction.forEach(function(item) {
-            if ( ( gs.oldDirection === item[ 0 ] && gs.direction === item[ 1 ] ) ||
-                 ( gs.oldDirection === item[ 1 ] && gs.direction === item[ 0 ] ) ) {
-                gs.direction = gs.oldDirection;
+            ],
+            oldDirection = this.get( 'oldDirection' ),
+            direction = this.get( 'direction' );
+        possibleDirection.forEach(function(item) {
+            if ( ( oldDirection === item[ 0 ] && direction === item[ 1 ] ) ||
+                 ( oldDirection === item[ 1 ] && direction === item[ 0 ] ) ) {
+                gs.set('direction', oldDirection);
             }
         });
     },
 
     computeSnake: function(gs) {
         var newPosition,
-            snake = gs.get( 'snake' );
+            snake = gs.get( 'snake' ),
+            direction = gs.get( 'direction' );
         newPosition = snake[ 0 ];
         gs.directionCheck();
-        switch ( gs.direction ) {
+        switch ( direction ) {
             case 'up':
                 newPosition -= gs.blocksH;
                 break;
@@ -53,7 +56,7 @@ export default Ember.Component.extend( {
                 newPosition--;
             break;
         }
-        gs.oldDirection = gs.direction;
+        gs.set('oldDirection', direction );
         if ( newPosition !== gs.get( 'peanut' ) ) {
             snake.popObject();
         } else {
@@ -169,6 +172,7 @@ export default Ember.Component.extend( {
         this.set( 'direction','left' );
         this.set( 'oldDirection','left' );
         this.set( 'gameMode', 'new');
+
         if (!restart) {
             for ( i = 0; i < ( this.mapSize() ); i++ ) {
                 blocks.push( Ember.Object.create(
@@ -187,7 +191,7 @@ export default Ember.Component.extend( {
                     39 : 'right',
                     40 : 'down'   
                 };
-                if ( keyTrans.hasOwnProperty( e.keyCode ) && gs.get('gameMode') === 'playing' ) {
+                if ( keyTrans.hasOwnProperty( e.keyCode ) && gs.get( 'gameMode' ) === 'playing' ) {
                     gs.direction = keyTrans[ e.keyCode ];
                 } else if (e.keyCode === 32) {
                     switch ( gs.get( 'gameMode' ) ) {
@@ -196,9 +200,9 @@ export default Ember.Component.extend( {
                             gs.mainLoop = setInterval( gs.computeSnake, gs.loopDelay, gs );
                             gs.set( 'gameMode', 'playing' );
                         break;
-                        case ('playing'):
+                        case ( 'playing' ):
                             window.clearInterval( gs.mainLoop );
-                            gs.set( 'gameMode', 'paused');
+                            gs.set( 'gameMode', 'paused' );
                         break;
                         case ( 'over' ):
                             gs.initialize( true );
