@@ -10,6 +10,8 @@ export default Ember.Component.extend( {
     snake        : [],
     mainLoop     : null, // attach the interval to this, we will have a way to stop it
     loopDelay    : 1000/10,
+    playersCount : 2,
+    frameCount   : 0,
 
     easterEggStyle: function() {
         return 'width: ' + this.blocksH * this.blockSize + 'px; height:' + this.blocksV * this.blockSize + 'px;';
@@ -20,61 +22,74 @@ export default Ember.Component.extend( {
     },
 
     // make sure that the snake cannot go against itself
-    directionCheck: function() {
-        var gs        = this,
-            possibleDirection = [
+    directionCheck: function(player) {
+        var possibleDirection = [
                 [ 'up', 'down' ],
                 [ 'left', 'right' ]
             ],
-            oldDirection = this.get( 'oldDirection' ),
-            direction = this.get( 'direction' );
+            oldDirection = player.oldDirection,
+            direction = player.direction;
+
         possibleDirection.forEach(function(item) {
             if ( ( oldDirection === item[ 0 ] && direction === item[ 1 ] ) ||
                  ( oldDirection === item[ 1 ] && direction === item[ 0 ] ) ) {
-                gs.set('direction', oldDirection);
+                player.direction = oldDirection;
             }
         });
     },
 
     computeSnake: function(gs) {
-        var newPosition,
-            snake = gs.get( 'snake' ),
-            direction = gs.get( 'direction' );
-        newPosition = snake[ 0 ];
-        gs.directionCheck();
-        switch ( direction ) {
-            case 'up':
-                newPosition -= gs.blocksH;
+        var newPosition;
+
+        gs.get('players').forEach(function(player) {
+            newPosition = player.snake[ 0 ];
+            gs.directionCheck(player);
+
+            switch ( player.direction ) {
+                case 'up':
+                    newPosition -= gs.blocksH;
+                    break;
+                case 'down':
+                    newPosition += gs.blocksH;
+                    break;
+                case 'right':
+                    newPosition++;
                 break;
-            case 'down':
-                newPosition += gs.blocksH;
+                case 'left':
+                    newPosition--;
                 break;
-            case 'right':
-                newPosition++;
-            break;
-            case 'left':
-                newPosition--;
-            break;
-        }
-        gs.set('oldDirection', direction );
-        if ( newPosition !== gs.get( 'peanut' ) ) {
-            snake.popObject();
-        } else {
-            gs.incrementProperty('score');
-            gs.computePeanut( snake );
-        }
-        if ( gs.collisionOccured( snake, newPosition ) ) {
-            window.clearInterval( gs.mainLoop );
-            gs.set('gameMode', 'over');
-        } else {
-            snake.insertAt( 0, newPosition );
-        }
+            }
+
+            player.oldDirection = player.direction;
+
+            if ( newPosition !== gs.get( 'peanut' ) ) {
+                player.snake.popObject();
+            } else {
+                gs.incrementProperty('score');
+                gs.computePeanut();
+            }
+
+            if ( gs.collisionOccured( player.snake, newPosition ) ) {
+                window.clearInterval( gs.mainLoop );
+                gs.set('gameMode', 'over');
+            } else {
+                player.snake.insertAt( 0, newPosition );
+            }
+            gs.set('frameCount', gs.frameCount + 1);
+        });
+
     },
 
     isSnake: function( i ) {
-        if ( this.get('snake').contains( i ) ) {
-            return true;
-        }
+        var isSnake = false;
+
+        this.get('players').forEach(function(player) {
+            if (player.snake.contains(i)) {
+                isSnake = true;
+            }
+        });
+
+        return isSnake;
     },
 
     isPeanut: function( i ) {
@@ -88,7 +103,7 @@ export default Ember.Component.extend( {
     },
 
     level: function() {
-        var gs     = this, 
+        var gs     = this,
             blocks = this.get( 'blocks' );
         blocks.map( function( item, i ) {
             item.setProperties( {
@@ -98,15 +113,19 @@ export default Ember.Component.extend( {
             } );
         } );
         return blocks;
-    }.property( 'snake.@each' ),
+    }.property( 'frameCount' ),
 
-    computePeanut: function( snake ) {
-        var i = false;
+    computePeanut: function() {
+        var i = false,
+            checkForPeanut = function(player) {
+                if (player.snake.contains(i)) {
+                    i = false;
+                }
+            };
+
         while ( i===false ) {
             i = Math.floor( ( Math.random() * this.mapSize() ) + 0);
-            if ( snake.contains(i) ) {
-                i = false;
-            }
+            this.get('players').forEach(checkForPeanut);
         }
         this.set( 'peanut', i );
     },
@@ -159,18 +178,31 @@ export default Ember.Component.extend( {
             offset = 0,
             snake  = [],
             blocks = [];
+
+        this.set( 'players', []);
+
+        for(var x = 0; x < this.playersCount; x++) {
+            snake = [];
+
+            if ( this.blocksV % 2 === 0 ) {
+                offset = ( this.blocksH ) / 2 + ( x * blocksH);
+            }
+
+            for ( i = 0; i < length; i++ ) {
+                snake.push( ( ( this.mapSize() - length ) / 2 ) + i + offset + 1 );
+            }
+
+            this.players.push({
+                'snake'         : snake,
+                'direction'     : 'left',
+                'oldDirection'  : 'left',
+                'score'         : 0
+            });
+        }
+
         // initialize the snake and it's default values
-        if ( this.blocksV % 2 === 0 ) {
-            offset = ( this.blocksH ) / 2;
-        }
-        for ( i = 0; i < length; i++ ) {
-            snake.push( ( ( this.mapSize() - length ) / 2 ) + i + offset + 1 );
-        }
-        this.computePeanut( snake );
-        this.set( 'snake', snake );
+        this.computePeanut();
         this.set( 'score', 0);
-        this.set( 'direction','left' );
-        this.set( 'oldDirection','left' );
         this.set( 'gameMode', 'new');
 
         if (!restart) {
@@ -185,14 +217,26 @@ export default Ember.Component.extend( {
             }
             this.set( 'blocks', blocks );
             window.addEventListener( 'keydown' , function( e ) {
-                var keyTrans = {
-                    37 : 'left', 
-                    38 : 'up',   
-                    39 : 'right',
-                    40 : 'down'   
-                };
-                if ( keyTrans.hasOwnProperty( e.keyCode ) && gs.get( 'gameMode' ) === 'playing' ) {
-                    gs.direction = keyTrans[ e.keyCode ];
+                var keyTrans = [
+                    {
+                        37 : 'left',
+                        38 : 'up',
+                        39 : 'right',
+                        40 : 'down',
+                    },{
+                        65 : 'left',
+                        87 : 'up',
+                        68 : 'right',
+                        83 : 'down'
+                    }
+                ];
+
+                if ( gs.get( 'gameMode' ) === 'playing' ) {
+                    keyTrans.forEach( function(trans, index) {
+                        if ( trans.hasOwnProperty( e.keyCode ) ) {
+                            gs.players[index].direction = trans[ e.keyCode ];
+                        }
+                    } );
                 } else if (e.keyCode === 32) {
                     switch ( gs.get( 'gameMode' ) ) {
                         case ( 'paused' ):
